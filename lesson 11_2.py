@@ -42,10 +42,15 @@ class Func:
                 now = self._info_client['cash']
                 ready_func = func(self, *args, **kwargs)
                 after = self._info_client['cash']
-                cash = 0 if arg1 not in ('зачисление средств', 'списание средств') else after - now
-                is_success = False if now == after and arg1 in ('зачисление средств', 'списание средств') else True
+                if 'cash' in kwargs:
+                    cash = kwargs['cash']
+                    is_success = False if now == after else True
+                else:
+                    cash = after - now
+                    is_success = True if after >= now else False
                 operation = self.history(cash=cash, balance=now,
                                          types_operations=arg1, is_success=is_success)
+
                 self._history_operation = pd.concat([self._history_operation, operation])
                 return ready_func
             return wrapper
@@ -91,7 +96,7 @@ class Func:
         else:
             results = self._history_operation.copy()
             results['change_sum'] = np.where(results['summ'] == 0, False, True)
-            results['balance_after'] = results['summ'] + results['balance']
+            results['balance_after'] = np.where(results['is_success'], results['summ'] + results['balance'], results['balance'])
             results['is_success'] = np.where(results['is_success'], "Успешно", "Операция отменена")
             results['date'] = pd.to_datetime(results['date']).dt.strftime("%d-%m-%Y %H:%M:%S")
             if type_history == 'history_operations':
@@ -136,19 +141,9 @@ class Bills(Func):
 
     @balance.setter
     def balance(self, value):
-        if value > 0:
+        if value >= 0:
             super()._deposit_money(cash=value)
         elif value < 0:
             super()._withdraw_money(cash=value)
         else:
             pass
-
-
-client2 = Bills(cash=1, name='Петров I.I.', currency='EUR')  # открыть счет
-client2.balance = 20
-client2.balance = -50
-client2.balance = -10
-print(client2.balance)
-print(client2.history_operations)
-print(client2.history_balance)
-print(client2.name_client)
