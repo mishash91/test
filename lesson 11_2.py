@@ -44,13 +44,12 @@ class Func:
                 after = self._info_client['cash']
                 if 'cash' in kwargs:
                     cash = kwargs['cash']
-                    is_success = False if now == after else True
+                    is_success = False if now == after or now + cash < 0 else True
                 else:
                     cash = after - now
-                    is_success = True if after >= now else False
+                    is_success = True if after >= 0 else False
                 operation = self.history(cash=cash, balance=now,
                                          types_operations=arg1, is_success=is_success)
-
                 self._history_operation = pd.concat([self._history_operation, operation])
                 return ready_func
             return wrapper
@@ -73,6 +72,7 @@ class Func:
         self._info_client['fio'] = self.name_client
         self._info_client['number'] = self.get_bill()
         self._info_client['currency'] = self._currency
+        self._info_client['date_open'] = datetime.now()
         return self._check_num()
 
     @__decorator('зачисление средств')
@@ -89,9 +89,14 @@ class Func:
 
     @__decorator('запрос информации по счету')
     def _info_balance(self, type_history=None) -> pd.DataFrame:
-        if type_history == 'state_balance':
-            return pd.DataFrame(columns=['Дата запроса', 'Текущий баланс по счету'],
+        if type_history == 'info_balance':
+            return pd.DataFrame(columns=['Дата запроса', 'Фио клиента', 'Дата открытия счета',
+                                         'Номер счета', 'Валюта счета', 'Текущий баланс по счету'],
                                 data=[[datetime.now().strftime("%d-%m-%Y %H:%M:%S"),
+                                       self._info_client['fio'],
+                                       self._info_client['date_open'].strftime("%d-%m-%Y %H:%M:%S"),
+                                       self._info_client['number'],
+                                       self._info_client['currency'],
                                        self._info_client['cash']]])
         else:
             results = self._history_operation.copy()
@@ -136,8 +141,20 @@ class Bills(Func):
         return super()._info_balance('history_balance').to_string()
 
     @property
-    def balance(self) -> pd.DataFrame:
-        return super()._info_balance('state_balance')
+    def info_balance(self):
+        return super()._info_balance('info_balance').to_string()
+
+    @property
+    def name_client(self):
+        return self._info_client.get('fio')
+
+    @name_client.setter
+    def name_client(self, value):
+        self._info_client['fio'] = value
+
+    @property
+    def balance(self):
+        return f'Текущий баланс счета {self._info_client.get("cash")} {self._info_client.get("currency")}'
 
     @balance.setter
     def balance(self, value):
@@ -147,3 +164,15 @@ class Bills(Func):
             super()._withdraw_money(cash=value)
         else:
             pass
+
+
+client2 = Bills(cash=1, name='Петров I.I.', currency='EUR')  # открыть счет
+client2.balance = 20
+client2.balance = -50
+client2.balance = -10
+print(client2.balance)  # баланс счета
+print(client2.history_operations)  # история операций
+print(client2.history_balance)  # история баланса
+print(client2.info_balance)  # информация по счету
+client2.name_client = 'Петров И.И.'  # изменить имя
+print(client2.name_client)
