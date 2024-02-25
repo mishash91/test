@@ -1,0 +1,166 @@
+import weakref
+import random
+from dataclasses import dataclass, field
+
+
+class Model:
+    def __init__(self):
+        self._values = weakref.WeakKeyDictionary()
+
+    def __set_name__(self, owner, name):
+        self._name = name
+
+    def __get__(self, instance, owner_class):
+        if instance is None:
+            return self
+        return self._values[instance]
+
+    def __set__(self, instance, value):
+        if value is None:
+            value = random.choice(['BMW', 'Audi', 'Москвич', 'Лада', 'Renault'])
+        if not isinstance(value, str):
+            raise TypeError("Модель, должен быть обязательно String")
+        self._values[instance] = value
+
+
+class Mileage:
+    def __init__(self):
+        self._values = weakref.WeakKeyDictionary()
+
+    def __set_name__(self, owner, name):
+        self._name = name
+
+    def __get__(self, instance, owner_class):
+        if instance is None:
+            return self
+        return self._values[instance]
+
+    def __set__(self, instance, value):
+        if value is None:
+            value = float(round(random.uniform(10, 10000)))
+        if isinstance(value, int):
+            value = float(value)
+        if not isinstance(value, float):
+            raise TypeError("Пробег, должен быть обязательно Float")
+        if value <= 0:
+            raise ValueError("Пробег, должен быть больше 0")
+        self._values[instance] = round(value, 2)
+
+
+class Fuel:
+    def __init__(self):
+        self._values = weakref.WeakKeyDictionary()
+
+    def __set_name__(self, owner, name):
+        self._name = name
+
+    def __get__(self, instance, owner_class):
+        if instance is None:
+            return self
+        return self._values[instance]
+
+    def __set__(self, instance, value):
+        if value is None:
+            value = random.randint(10, 100)
+        if not isinstance(value, float) and not isinstance(value, int):
+            raise TypeError("Количество топлива в баке должно быть числом")
+        if value < 0:
+            raise ValueError("Количество топлива в баке должно быть больше 0")
+        self._values[instance] = round(value, 2)
+
+
+class FuelConsumption:
+    def __init__(self):
+        self._values = weakref.WeakKeyDictionary()
+
+    def __set_name__(self, owner, name):
+        self._name = name
+
+    def __get__(self, instance, owner_class):
+        if instance is None:
+            return self
+        return self._values[instance]
+
+    def __set__(self, instance, value):
+        if value is None:
+            value = random.randint(3, 20)
+        if not isinstance(value, float) and not isinstance(value, int):
+            raise TypeError("Расход топлива должен быть числом")
+        if value <= 0:
+            raise ValueError("Расход топлива должен быть больше 0")
+        self._values[instance] = value
+
+
+class Car:
+    _model = Model()
+    mileage = Mileage()
+    fuel = Fuel()
+    _fuel_consumption = FuelConsumption()
+
+    def __init__(self, model=None, mileage=None, fuel=None, fuel_consumption=None):
+        self._model: str = model
+        self.fuel = fuel
+        self._fuel_consumption = fuel_consumption
+        self.mileage = mileage
+
+    @property
+    def model(self):
+        return self._model
+
+    @property
+    def fuel_consumption(self):
+        return self._fuel_consumption
+
+    @property
+    def real_mileage(self):
+        return self._max_mileage(self.fuel, self._fuel_consumption)
+
+    @property
+    def real_mileage_str(self):
+        return f'{self.model}: {self.real_mileage} км'
+
+    @staticmethod
+    def _max_mileage(fuel, fuel_consumption):
+        return round(fuel / fuel_consumption * 100, 2)
+
+    def move(self, km=0):
+        max_miles = self._max_mileage(self.fuel, self.fuel_consumption) - 0.01
+        max_miles = 0 if max_miles < 0 else max_miles
+        if max_miles < km:
+            km = max_miles
+        self.mileage += km
+        self.fuel -= self.fuel_consumption * km / 100
+
+    def __lt__(self, other):
+        return self.real_mileage <= other.real_mileage
+
+    def __repr__(self):
+        return f'{self.model}, пробег:{self.mileage}, топлива в баке:{self.fuel}л, потребление={self.fuel_consumption}л)'
+
+
+def return_result(*args):
+    t = list(sorted(args, reverse=True))
+    print('Созданные автомобили:')
+    for i in t:
+        print(i)
+
+    print('Проехали:')
+    for i in t:
+        print(i.real_mileage_str)
+
+    print(f'Дальше всех проехала: {t[0].model}')
+
+a1 = Car()
+a2 = Car()
+a3 = Car()
+a4 = Car()
+a5 = Car()
+return_result(a1, a2, a3, a4, a5)
+
+print('-'*30)
+print(a1, a1.real_mileage)
+a1.move(1000000)
+print(a1, a1.real_mileage)
+a1.move(1000000)
+print(a1, a1.real_mileage)
+
