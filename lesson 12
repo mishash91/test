@@ -1,0 +1,141 @@
+import abc
+
+
+class Func:
+    def __init__(self):
+        self._values = {}
+
+    def __set_name__(self, owner, name):
+        self._name = name
+
+    def __get__(self, instance, owner_class):
+        if instance is None:
+            return self
+        return self._values[instance]
+
+    def __set__(self, instance, value):
+        self._values[instance] = value
+
+
+class Commodity:
+    name_product = Func()
+    price = Func()
+
+    def __init__(self, name_product, price):
+        self.name_product = name_product
+        self.price = price
+        self._result = None
+
+    @property
+    def result(self):
+        return self._result
+
+
+class AbstaractPurchase(abc.ABC, Commodity):
+    quantity_prod = Func()
+
+    def __call__(self, quantity):
+        self.quantity_prod = quantity
+
+    @abc.abstractmethod
+    def getCost(self):
+        pass
+
+
+class Discount(AbstaractPurchase):
+    quantity_prod = Func()
+
+    def __init__(self, quantity, commodity):
+        super().__init__(commodity.name_product, commodity.price)
+        self.quantity_prod = quantity
+        self.__max_discount = 0.20
+        self.commodity = commodity
+
+    def getCost(self):
+        self.commodity._result = self.quantity_prod * self.commodity.price * (1 - self.__max_discount)
+        return self.commodity.result
+
+    @property
+    def result(self):
+        return self.commodity.result
+
+    def __repr__(self):
+        if self.commodity.result is not None:
+            return (f'Название: {self.commodity.name_product}, Цена: {self.commodity.price}, '
+                    f'Количество: {self.quantity_prod},'
+                    f'Скидка: {self.__max_discount*100}%, Итоговая стоимость: {self.commodity.result}')
+
+
+class DiscountQuantity(AbstaractPurchase):
+    quantity_prod = Func()
+    discount = Func()
+
+    def __init__(self, quantity, commodity):
+        super().__init__(commodity.name_product, commodity.price)
+        self.quantity_prod = quantity
+        self.__quantityStartDiscount = 10
+        self.__max_discount = 0.20
+        self.discount = 0
+        self.commodity = commodity
+
+    def getCost(self):
+        if self.quantity_prod >= self.__quantityStartDiscount:
+            print("Сработала скидка по кол-ву товаров")
+            if self.discount == 0 or self.discount > self.__max_discount:
+                self.discount = self.__max_discount
+            self.commodity._result = self.quantity_prod * self.commodity.price * (1-self.discount)
+            return self.result
+        else:
+            print("Скидка по кол-ву товаров не сработала")
+            self.commodity._result = self.quantity_prod * self.commodity.price
+            return self.result
+
+    @property
+    def result(self):
+        return self.commodity.result
+
+    def __repr__(self):
+        if self.commodity.result is not None:
+            return (f'Название: {self.commodity.name_product}, Цена: {self.commodity.price}, '
+                    f'Количество: {self.quantity_prod},'
+                    f'Скидка: {self.discount*100}%, Итоговая стоимость: {self.commodity.result}')
+
+
+class CommodityCosts(AbstaractPurchase, Commodity):
+    costs = Func()
+
+    def __init__(self, costs, commodity):
+        super().__init__(commodity.name_product, commodity.price)
+        self.costs = costs
+        self.commodity = commodity
+
+    def getCost(self):
+        a = self.commodity.result
+        self.commodity._result = self.costs + a
+        return self.result
+
+    @property
+    def result(self):
+        return self.commodity.result
+
+    def __repr__(self):
+        if self.result is not None:
+            return (f'Название: {self.commodity.name_product}, '
+                    f'Итоговая стоимость c учетом транспортных расходов: {self.result}')
+
+
+a = Commodity(name_product='jinse', price=100)
+b = DiscountQuantity(quantity=10, commodity=a)
+b.discount = 0.1
+b.getCost()
+print(b)
+
+c = Discount(quantity=10, commodity=a)
+c.getCost()
+print(c)
+
+d = CommodityCosts(costs=10, commodity=a)
+d.getCost()
+
+
+print(a.result)
